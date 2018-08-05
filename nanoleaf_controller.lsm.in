@@ -1,0 +1,18 @@
+Begin3
+Title:		nanoleaf_controller
+Version:	@VERSION@
+Entered-date:	@ISODATE@
+Description:	Controls Nanoleaf Aurora smart lights.
+		@configure_input@
+		This program controls Nanoleaf brand Aurora model smart lights.
+Keywords:	[home,automation,nanoleaf,aurora]
+Author: 	cnhfci3wngoifuxq3nbkuxqn3guykfgxwunwfk4@mailinator.com (Some Guy)
+Maintained-by:	cnhfci3wngoifuxq3nbkuxqn3guykfgxwunwfk4@mailinator.com (Some Guy)
+Primary-site:	metlab.unc.edu pub/Linux/apps/some/directory
+		31k nanoleaf_controller-@VERSION@.tar.gz
+		500  nanoleaf_controller.lsm
+Alternate-site: 
+Original-site:  
+Platforms:      
+Copying-policy:	GNU copyleft
+End
