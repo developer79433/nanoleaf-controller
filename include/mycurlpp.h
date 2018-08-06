@@ -29,6 +29,19 @@ public:
 		path(ppath)
 	{
 	}
+	Curl(
+		const std::string &phostname,
+		unsigned int pport = 80,
+		bool puse_ssl = false,
+		const char *ppath = "/"
+	) :
+		curl(curl_easy_init()),
+		hostname(phostname),
+		port(pport),
+		use_ssl(puse_ssl),
+		path(ppath)
+	{
+	}
 	virtual ~Curl() {
 		if (curl) {
 			curl_easy_cleanup(curl);
