@@ -1,5 +1,8 @@
 #include <iostream>
 #include <sstream>
+#include <fstream>
+#include <chrono>
+#include <thread>
 #include <cstdlib>
 #include <curl/curl.h>
 #include <curl/easy.h>
@@ -10,13 +13,102 @@
 #include <avahi-common/error.h>
 
 #define NANOLEAF_MDNS_SERVICE_TYPE "_nanoleafapi._tcp"
-#define URL "http://192.168.1.17/"
+
+class Curl {
+private:
+	CURL *curl;
+	std::string hostname;
+	unsigned int port;
+	bool use_ssl;
+	std::string path;
+	long last_response_code;
+public:
+	Curl(
+		const char *phostname = NULL,
+		unsigned int pport = 80,
+		bool puse_ssl = false,
+		const char *ppath = "/"
+	) :
+		curl(curl_easy_init()),
+		hostname(phostname),
+		port(pport),
+		use_ssl(puse_ssl),
+		path(ppath)
+	{
+	}
+	virtual ~Curl() {
+		if (curl) {
+			curl_easy_cleanup(curl);
+		}
+	}
+	void set_hostname(std::string &new_hostname) {
+		hostname = new_hostname;
+	}
+	void set_port(unsigned short new_port) {
+		port = new_port;
+	}
+	void set_ssl(bool new_ssl) {
+		use_ssl = new_ssl;
+	}
+	void set_path(const std::string &new_path) {
+		path = new_path;
+	}
+	void make_url(
+		std::ostringstream &url
+	) {
+		url.clear();
+		url << "http" << (use_ssl ? "s" : "") << "://" << hostname <<
+				":" << port << path;
+	}
+	std::string get_url(void) {
+		std::ostringstream url;
+		make_url(url);
+		return url.str();
+	}
+	operator CURL*(void) { return curl; }
+	operator const CURL*(void) { return curl; }
+	template<typename T> void setopt(CURLoption opt, const T& val) {
+		CURLcode res;
+		res = curl_easy_setopt(curl, opt, val);
+		if (res != CURLE_OK) {
+			throw curl_easy_strerror(res);
+		}
+	}
+	unsigned int get_status(void) const { return static_cast<unsigned int>(last_response_code); }
+	unsigned int perform(void) {
+		std::ostringstream surl;
+		make_url(surl);
+		const std::string &url = surl.str();
+		std::cerr << "Connecting to '" << url << "'" << std::endl;
+		setopt(CURLOPT_URL, url.c_str());
+		CURLcode res;
+		res = curl_easy_perform(curl);
+		if (res == CURLE_OK) {
+			curl_easy_getinfo(curl, CURLINFO_RESPONSE_CODE, &last_response_code);
+		} else {
+			throw curl_easy_strerror(res);
+		}
+		return get_status();
+	}
+};
+
+#define TOKEN_FILENAME "auth_token.dat"
 
 void
-make_url(std::ostringstream &url, const char *host_name, unsigned short port, bool use_ssl = false)
+read_token_file(std::string &tok)
 {
-	url << "http" << (use_ssl ? "s" : "") << "://" << host_name <<
-			":" << port << "/";
+	std::ifstream fs;
+	fs.open(TOKEN_FILENAME);
+	fs >> tok;
+	fs.close();
+}
+
+void
+write_token_file(const std::string &tok) {
+	std::ofstream fs;
+	fs.open(TOKEN_FILENAME);
+	fs << tok;
+	fs.close();
 }
 
 size_t write_callback(char *ptr, size_t size, size_t nmemb, void *userdata)
@@ -26,56 +118,62 @@ size_t write_callback(char *ptr, size_t size, size_t nmemb, void *userdata)
 }
 
 void
-do_connect_to_panels(CURL *curl, const char *host_name, unsigned short port)
+generate_token(Curl &curl, std::string &token)
 {
-	std::ostringstream url;
-	make_url(url, host_name, port);
-	std::cerr << "Connecting to '" << url.str().c_str() << "'" << std::endl;
-	CURLcode res;
-	res = curl_easy_setopt(curl, CURLOPT_URL, url.str().c_str());
-	if (res != CURLE_OK) {
-		throw curl_easy_strerror(res);
-	}
-	res = curl_easy_setopt(curl, CURLOPT_WRITEDATA, NULL);
-	if (res != CURLE_OK) {
-		throw curl_easy_strerror(res);
-	}
-	res = curl_easy_setopt(curl, CURLOPT_WRITEFUNCTION, write_callback);
-	if (res != CURLE_OK) {
-		throw curl_easy_strerror(res);
-	}
-	res = curl_easy_setopt(curl, CURLOPT_VERBOSE, 1L);
-	if (res != CURLE_OK) {
-		throw curl_easy_strerror(res);
-	}
-	res = curl_easy_perform(curl);
-	if (res != CURLE_OK) {
-		throw curl_easy_strerror(res);
-	}
-	if (res != CURLE_OK) {
-		throw curl_easy_strerror(res);
+	curl.set_path("/api/v1/new");
+	curl.setopt(CURLOPT_POSTFIELDSIZE, 0L);
+	curl.setopt(CURLOPT_POSTFIELDS, "");
+	curl.setopt(CURLOPT_WRITEDATA, NULL);
+	curl.setopt(CURLOPT_WRITEFUNCTION, write_callback);
+	curl.setopt(CURLOPT_VERBOSE, 1L);
+	for (;;) {
+		curl.perform();
+		if (200 == curl.get_status()) {
+			std::cerr << "Authorisation successful" << std::endl;
+			// TODO: Parse JSON response into token
+			break;
+		} else if (403 == curl.get_status()) {
+			std::cerr << "Authorisation failed; waiting before retry. Did you push and hold the controller button?" << std::endl;
+			using namespace std::chrono_literals;
+			std::this_thread::sleep_for(5s);
+		} else {
+			std::ostringstream msg;
+			msg << "Unrecognised HTTP status; " << curl.get_status() << std::endl;
+			throw msg.str().c_str();
+		}
 	}
 }
 
-class Curl {
-private:
-	CURL *curl;
-public:
-	Curl(void) : curl(curl_easy_init()) {}
-	virtual ~Curl() {
-		if (curl) {
-			curl_easy_cleanup(curl);
-		}
+std::string get_auth_token(Curl &curl)
+{
+	static std::string token;
+	if (0 == token.length()) {
+		read_token_file(token);
 	}
-	operator CURL*(void) { return curl; }
-	operator const CURL*(void) { return curl; }
-};
+	if (0 == token.length()) {
+		generate_token(curl, token);
+	}
+	if (0 != token.length()) {
+		write_token_file(token);
+	}
+	return token;
+}
 
 void
-connect_to_panels(const char *host_name, unsigned short port)
+manipulate_panels(Curl &curl)
 {
-	Curl curl;
-	do_connect_to_panels(curl, host_name, port);
+	std::ostringstream path;
+	std::string token = get_auth_token(curl);
+	if (0 == token.length()) {
+		throw "No auth token";
+	}
+	path << "/api/v1/" << token << "/";
+	curl.set_path(path.str());
+	curl.setopt(CURLOPT_HTTPGET, 1L);
+	curl.setopt(CURLOPT_WRITEDATA, NULL);
+	curl.setopt(CURLOPT_WRITEFUNCTION, write_callback);
+	curl.setopt(CURLOPT_VERBOSE, 1L);
+	curl.perform();
 }
 
 struct resolve_callback_args {
@@ -119,7 +217,8 @@ static void resolve_callback(
                     "\tmulticast: " << !!(flags & AVAHI_LOOKUP_RESULT_MULTICAST) << std::endl <<
                     "\tcached: " << !!(flags & AVAHI_LOOKUP_RESULT_CACHED) << std::endl
 			;
-            connect_to_panels(host_name, port);
+            Curl curl(host_name, port);
+            manipulate_panels(curl);
             avahi_free(t);
         }
     }
@@ -231,7 +330,11 @@ main(int argc, char *argv[])
 	if (res != CURLE_OK) {
 		throw curl_easy_strerror(res);
 	}
-	discover();
+	try {
+		discover();
+	} catch (char const * const str) {
+		std::cerr << "Exception: " << str << std::endl;
+	}
 	curl_global_cleanup();
 	return EXIT_SUCCESS;
 }
