@@ -11,6 +11,9 @@
 #include <avahi-common/simple-watch.h>
 #include <avahi-common/malloc.h>
 #include <avahi-common/error.h>
+#include <nlohmann/json.hpp>
+
+using json = nlohmann::json;
 
 #define NANOLEAF_MDNS_SERVICE_TYPE "_nanoleafapi._tcp"
 
@@ -111,9 +114,10 @@ write_token_file(const std::string &tok) {
 	fs.close();
 }
 
-size_t write_callback(char *ptr, size_t size, size_t nmemb, void *userdata)
+size_t accumulate_response(char *ptr, size_t size, size_t nmemb, void *userdata)
 {
-	std::cerr.write(ptr, size * nmemb);
+	std::ostringstream *response_body = static_cast<std::ostringstream *>(userdata);
+	response_body->write(ptr, size * nmemb);
 	return size * nmemb;
 }
 
@@ -123,14 +127,17 @@ generate_token(Curl &curl, std::string &token)
 	curl.set_path("/api/v1/new");
 	curl.setopt(CURLOPT_POSTFIELDSIZE, 0L);
 	curl.setopt(CURLOPT_POSTFIELDS, "");
-	curl.setopt(CURLOPT_WRITEDATA, NULL);
-	curl.setopt(CURLOPT_WRITEFUNCTION, write_callback);
+	std::ostringstream response_body;
+	curl.setopt(CURLOPT_WRITEDATA, &response_body);
+	curl.setopt(CURLOPT_WRITEFUNCTION, accumulate_response);
 	curl.setopt(CURLOPT_VERBOSE, 1L);
 	for (;;) {
 		curl.perform();
 		if (200 == curl.get_status()) {
 			std::cerr << "Authorisation successful" << std::endl;
 			// TODO: Parse JSON response into token
+			json j = json::parse(response_body.str());
+			token = j["auth_token"];
 			break;
 		} else if (403 == curl.get_status()) {
 			std::cerr << "Authorisation failed; waiting before retry. Did you push and hold the controller button?" << std::endl;
@@ -170,10 +177,21 @@ manipulate_panels(Curl &curl)
 	path << "/api/v1/" << token << "/";
 	curl.set_path(path.str());
 	curl.setopt(CURLOPT_HTTPGET, 1L);
-	curl.setopt(CURLOPT_WRITEDATA, NULL);
-	curl.setopt(CURLOPT_WRITEFUNCTION, write_callback);
+	std::ostringstream response_body;
+	curl.setopt(CURLOPT_WRITEDATA, &response_body);
+	curl.setopt(CURLOPT_WRITEFUNCTION, accumulate_response);
 	curl.setopt(CURLOPT_VERBOSE, 1L);
 	curl.perform();
+	if (200 == curl.get_status()) {
+		std::cerr << "Get All Light Panel Controller Info successful" << std::endl;
+		// TODO: Parse JSON response into token
+		json j = json::parse(response_body.str());
+		std::cerr << " Panel count: " << j["panelLayout"]["layout"]["numPanels"] << std::endl;
+	} else {
+		std::ostringstream msg;
+		msg << "Unrecognised HTTP status; " << curl.get_status() << std::endl;
+		throw msg.str().c_str();
+	}
 }
 
 struct resolve_callback_args {
