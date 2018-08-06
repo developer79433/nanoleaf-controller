@@ -1,7 +1,7 @@
 AC_INIT(nanoleaf_controller, 0.1, cnhfci3wngoifuxq3nbkuxqn3guykfgxwunwfk4@mailinator.com)
 AC_LANG(C++)
 AC_PROG_CXX()
-LIBS=$(curl-config --libs)
+LIBS=$(curl-config --libs)" -lavahi-client -lavahi-common"
 CXXFLAGS=" -pedantic -Wall -Werror -std=gnu++14 -g3 $(curl-config --cflags)"
 LDFLAGS+="$LIBS"
 AC_CONFIG_SRCDIR([src/main.cpp])
