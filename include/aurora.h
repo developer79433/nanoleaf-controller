@@ -88,7 +88,7 @@ public:
 		curl.perform();
 		if (200 == curl.get_status()) {
 			std::cerr << "Get All Light Panel Controller Info successful" << std::endl;
-			// TODO: Parse JSON response into token
+			std::cerr << "JSON response: " << response_body.str() << std::endl;
 			json j = json::parse(response_body.str());
 			std::cerr << " Panel count: " << j["panelLayout"]["layout"]["numPanels"] << std::endl;
 		} else {
