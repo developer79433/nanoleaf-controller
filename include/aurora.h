@@ -55,8 +55,8 @@ public:
 				std::this_thread::sleep_for(5s);
 			} else {
 				std::ostringstream msg;
-				msg << "Unrecognised HTTP status; " << curl.get_status() << std::endl;
-				throw msg.str().c_str();
+				msg << "Unrecognised HTTP status: " << curl.get_status() << std::endl;
+				throw msg.str();
 			}
 		}
 	}
@@ -93,8 +93,8 @@ public:
 			std::cerr << " Panel count: " << j["panelLayout"]["layout"]["numPanels"] << std::endl;
 		} else {
 			std::ostringstream msg;
-			msg << "Unrecognised HTTP status; " << curl.get_status() << std::endl;
-			throw msg.str().c_str();
+			msg << "Unrecognised HTTP status: " << curl.get_status() << std::endl;
+			throw msg.str();
 		}
 	}
 };

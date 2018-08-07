@@ -11,7 +11,7 @@
 
 class MDNSResponder {
 private:
-    typedef void (*host_callback_t)(const AvahiAddress &address, const std::string &hostname, uint16_t port, const std::string &id, void *userdata);
+    typedef bool (*host_callback_t)(const AvahiAddress &address, const std::string &hostname, uint16_t port, const std::string &id, void *userdata);
     class Session {
     private:
     	MDNSResponder *responder;
@@ -20,14 +20,15 @@ private:
         const std::string service_type;
     	AvahiSimplePoll *simple_poll;
     	AvahiClient *client;
-    private:
-    	/**
-    	 * This is static so it can be accessed from the resolve callback,
-    	 * potentially from multiple threads concurrently, so access to it
-    	 * must be serialised using a mutex.
-    	 */
+	private:
+		/**
+		 * These are static so they can be accessed from the resolve callback,
+		 * potentially from multiple threads concurrently, so access to them
+		 * must be serialised using a mutex.
+		 */
         static host_callback_t shared_host_callback;
         static void *shared_callback_arg;
+        static bool shared_continue_enumeration;
     private:
     	static void resolve_callback(
     	    AvahiServiceResolver *r,
@@ -43,6 +44,13 @@ private:
     	    AvahiStringList *txt,
     	    AvahiLookupResultFlags flags,
 			void *userdata
+		);
+		void new_device(
+			AvahiIfIndex interface,
+			AvahiProtocol protocol,
+			const char *name,
+			const char *type,
+			const char *domain
 		);
     	void browse_callback(
     	    AvahiServiceBrowser *b,
