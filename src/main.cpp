@@ -1,17 +1,9 @@
-#include <iostream>
-#include <sstream>
-#include <fstream>
-#include <chrono>
-#include <thread>
 #include <cstdlib>
-#include <curl/curl.h>
-#include <curl/easy.h>
 
 #include "mycurlpp.h"
 #include "aurora.h"
 #include "discovery.h"
 
-#define NANOLEAF_MDNS_SERVICE_TYPE "_nanoleafapi._tcp"
 #if 0
 /* Only use this Device ID */
 #define AURORA_ID "74:A9:47:AD:62:C1"
@@ -30,7 +22,7 @@ void try_to_manipulate_aurora(const std::string &host, uint16_t port) {
 	try {
 #endif /* CATCH_EXCEPTIONS */
 		mynanoleaf::Aurora aurora(host, port);
-		aurora.manipulate();
+		aurora.get_info();
 #ifdef CATCH_EXCEPTIONS
 	} catch (char const * const str) {
 		std::cerr << "Aurora exception: " << str << std::endl;
@@ -67,7 +59,6 @@ main(int argc, char *argv[])
 	if (res != CURLE_OK) {
 		throw curl_easy_strerror(res);
 	}
-	std::cerr << __FILE__ << ":" << __LINE__ << " " << reinterpret_cast<void *>(aurora_callback) << std::endl;
 	struct callback_args args;
 #ifdef AURORA_ID
 	std::string wanted_id(AURORA_ID);
@@ -76,7 +67,7 @@ main(int argc, char *argv[])
 	args.wanted_id = NULL;
 #endif /* AURORA_ID */
 	MDNSResponder mdns;
-	mdns.discover(NANOLEAF_MDNS_SERVICE_TYPE, aurora_callback, &args);
+	mdns.discover(mynanoleaf::Aurora::NANOLEAF_MDNS_SERVICE_TYPE, aurora_callback, &args);
 	curl_global_cleanup();
 	return EXIT_SUCCESS;
 }

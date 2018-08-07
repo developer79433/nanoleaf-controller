@@ -1,6 +1,7 @@
 #ifndef MYCURLPP_H
 #define MYCURLPP_H 1
 
+#include <iostream>
 #include <sstream>
 #include <curl/curl.h>
 #include <curl/easy.h>
@@ -20,26 +21,30 @@ public:
 		const char *phostname = NULL,
 		unsigned int pport = 80,
 		bool puse_ssl = false,
-		const char *ppath = "/"
+		const char *ppath = "/",
+		long plast_response_code = 0
 	) :
 		curl(curl_easy_init()),
 		hostname(phostname),
 		port(pport),
 		use_ssl(puse_ssl),
-		path(ppath)
+		path(ppath),
+		last_response_code(plast_response_code)
 	{
 	}
 	Curl(
 		const std::string &phostname,
 		unsigned int pport = 80,
 		bool puse_ssl = false,
-		const char *ppath = "/"
+		const char *ppath = "/",
+		long plast_response_code = 0
 	) :
 		curl(curl_easy_init()),
 		hostname(phostname),
 		port(pport),
 		use_ssl(puse_ssl),
-		path(ppath)
+		path(ppath),
+		last_response_code(plast_response_code)
 	{
 	}
 	virtual ~Curl() {
