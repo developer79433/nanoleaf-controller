@@ -1,6 +1,7 @@
 #include "discovery.h"
 
-MDNSResponder::host_callback_t MDNSResponder::shared_host_callback = NULL;
+MDNSResponder::host_callback_t MDNSResponder::Session::shared_host_callback = NULL;
+void *MDNSResponder::Session::shared_callback_arg = NULL;
 
 void MDNSResponder::Session::resolve_callback(
     AvahiServiceResolver *r,
@@ -30,6 +31,12 @@ void MDNSResponder::Session::resolve_callback(
             std::cerr << "Service '" << name << "' of type '" << type << "' in domain '" << domain << "':" << std::endl;
             avahi_address_snprint(a, sizeof(a), address);
             t = avahi_string_list_to_string(txt);
+            std::string id;
+            for (AvahiStringList *l = txt; l != NULL; l = avahi_string_list_get_next(l)) {
+            	if (l->size > 3 && 'i' == l->text[0] && 'd' == l->text[1] && '=' == l->text[2]) {
+            		id = reinterpret_cast<char *>(&(l->text[3]));
+            	}
+            }
             std::cerr <<
                     "\t" << host_name << ":" << port << " (" << a << ")" << std::endl <<
                     "\tTXT=" << t << std::endl <<
@@ -40,7 +47,7 @@ void MDNSResponder::Session::resolve_callback(
                     "\tmulticast: " << !!(flags & AVAHI_LOOKUP_RESULT_MULTICAST) << std::endl <<
                     "\tcached: " << !!(flags & AVAHI_LOOKUP_RESULT_CACHED) << std::endl
 			;
-            shared_host_callback(address, host_name, port);
+            shared_host_callback(*address, host_name, port, id, shared_callback_arg);
             avahi_free(t);
         }
     }
@@ -74,6 +81,7 @@ void MDNSResponder::Session::browse_callback(
                the resolver for us. */
             // TODO: Begin critical section
             shared_host_callback = host_callback;
+            shared_callback_arg = callback_arg;
             ret = avahi_service_resolver_new(
             	client,
 				interface,
