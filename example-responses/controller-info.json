@@ -1,0 +1,106 @@
+{
+  "name": "Nanoleaf Light Panels 00:00:00",
+  "serialNo": "S0000000000",
+  "manufacturer": "Nanoleaf",
+  "firmwareVersion": "3.0.3",
+  "model": "NL22",
+  "state": {
+    "on": {
+      "value": true
+    },
+    "brightness": {
+      "value": 92,
+      "max": 100,
+      "min": 0
+    },
+    "hue": {
+      "value": 120,
+      "max": 360,
+      "min": 0
+    },
+    "sat": {
+      "value": 100,
+      "max": 100,
+      "min": 0
+    },
+    "ct": {
+      "value": 4000,
+      "max": 6500,
+      "min": 1200
+    },
+    "colorMode": "effects"
+  },
+  "effects": {
+    "select": "Pulse Pop Beats",
+    "effectsList": [
+      "BATMAN",
+      "BATMAN Sa",
+      "Black widow",
+      "Checkerboard",
+      "Checkerboard Black and White",
+      "Color Burst",
+      "Dancing Duo",
+      "Dark side of the moon",
+      "Disco",
+      "Fireworks",
+      "Flames",
+      "Flash Light",
+      "Forest",
+      "Inner Peace",
+      "Joe smooth colors",
+      "Joe smooth colors Sa",
+      "Lightning",
+      "Meteor Shower",
+      "Neon Night",
+      "Netflix And Chill",
+      "Nice",
+      "Nice One",
+      "Night Melt",
+      "Northern Lights",
+      "Orange",
+      "Paint Splatter",
+      "Pulse Pop Beats",
+      "Rhythmic Northern Lights",
+      "Ripple",
+      "Romantic",
+      "Snowfall",
+      "Sound Bar",
+      "Streaking Notes",
+      "Triluminox Energy Crystal",
+      "fast Lightning"
+    ]
+  },
+  "panelLayout": {
+    "layout": {
+      "numPanels": 2,
+      "sideLength": 150,
+      "positionData": [
+        {
+          "panelId": 236,
+          "x": -74,
+          "y": 43,
+          "o": 180
+        }
+      ]
+    },
+    "globalOrientation": {
+      "value": 0,
+      "max": 360,
+      "min": 0
+    }
+  },
+  "rhythm": {
+    "rhythmConnected": true,
+    "rhythmActive": true,
+    "rhythmId": 298,
+    "hardwareVersion": "1.4",
+    "firmwareVersion": "2.2",
+    "auxAvailable": false,
+    "rhythmMode": 0,
+    "rhythmPos": {
+      "x": -74,
+      "y": 129,
+      "o": 120
+    }
+  }
+}
