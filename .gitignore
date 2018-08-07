@@ -3,7 +3,7 @@
 /missing
 /install-sh
 /src/.deps
-/src/main.o
+/src/*.o
 /config.status
 /Makefile
 /aclocal.m4
