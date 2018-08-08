@@ -80,19 +80,35 @@ public:
 class Aurora {
 public:
 	static const char *NANOLEAF_MDNS_SERVICE_TYPE;
+	static const char *API_PREFIX;
 private:
 	mycurlpp::Curl curl;
 	std::string token;
 	AuroraJson all_info;
 	void read_token_file();
 	void write_token_file();
+	void do_request(
+		const std::string &method,
+		const std::string &token,
+		const std::string &path,
+		const std::string *request_body,
+		std::ostringstream &response_body
+	);
 public:
 	Aurora(const std::string &hostname, unsigned short port = 16021) : curl(mycurlpp::Curl(hostname, port)) {}
 	virtual ~Aurora() {}
 	static size_t accumulate_response(char *ptr, size_t size, size_t nmemb, void *userdata);
 	void generate_token();
 	std::string get_auth_token();
-	void get_info();
+	unsigned int get_panel_count() const {
+		return all_info.panel_layout.layout.positions.size();
+	}
+	void get_info() {
+		std::ostringstream response_body;
+		do_request("GET", get_auth_token(), "/", NULL, response_body);
+		all_info = json::parse(response_body.str());
+		std::cerr << "Panel count: " << get_panel_count() << std::endl;
+	}
 };
 
 void to_json(json &j, const ClampedValue &cv);

@@ -7,6 +7,7 @@
 namespace mynanoleaf {
 
 const char *Aurora::NANOLEAF_MDNS_SERVICE_TYPE = "_nanoleafapi._tcp";
+const char *Aurora::API_PREFIX = "/api/v1/";
 
 void Aurora::read_token_file() {
 	std::ifstream fs;
@@ -29,29 +30,19 @@ size_t Aurora::accumulate_response(char *ptr, size_t size, size_t nmemb, void *u
 }
 
 void Aurora::generate_token() {
-	curl.set_path("/api/v1/new");
-	curl.setopt(CURLOPT_POSTFIELDSIZE, 0L);
-	curl.setopt(CURLOPT_POSTFIELDS, "");
 	std::ostringstream response_body;
-	curl.setopt(CURLOPT_WRITEDATA, &response_body);
-	curl.setopt(CURLOPT_WRITEFUNCTION, accumulate_response);
-	curl.setopt(CURLOPT_VERBOSE, 1L);
 	for (;;) {
-		curl.perform();
-		if (200 == curl.get_status()) {
+		try {
+			do_request("POST", "new", "/", NULL, response_body);
 			std::cerr << "Authorisation successful" << std::endl;
 			json j = json::parse(response_body.str());
 			token = j["auth_token"];
 			write_token_file();
-			break;
-		} else if (403 == curl.get_status()) {
+		} catch (const std::string &errmsg) {
+			std::cerr << errmsg << std::endl;
 			std::cerr << "Authorisation failed; waiting before retry. Did you push and hold the controller button?" << std::endl;
 			using namespace std::chrono_literals;
 			std::this_thread::sleep_for(5s);
-		} else {
-			std::ostringstream msg;
-			msg << "Unrecognised HTTP status: " << curl.get_status() << std::endl;
-			throw msg.str();
 		}
 	}
 }
@@ -69,28 +60,42 @@ std::string Aurora::get_auth_token() {
 	return token;
 }
 
-void Aurora::get_info() {
-	std::ostringstream path;
-	std::string token = get_auth_token();
+void Aurora::do_request(
+	const std::string &method,
+	const std::string &token,
+	const std::string &path,
+	const std::string *request_body,
+	std::ostringstream &response_body
+) {
+	std::ostringstream full_path;
 	if (0 == token.length()) {
-		throw "No auth token";
+		throw std::string("No auth token");
 	}
-	path << "/api/v1/" << token << "/";
-	curl.set_path(path.str());
-	curl.setopt(CURLOPT_HTTPGET, 1L);
-	std::ostringstream response_body;
+	full_path << API_PREFIX << token << path;
+	curl.set_path(full_path.str());
+	if (method == "GET") {
+		curl.setopt(CURLOPT_HTTPGET, 1L);
+		// Request body ignored
+	} else if (method == "POST") {
+		curl.setopt(CURLOPT_POSTFIELDSIZE, (NULL == request_body) ? 0L : request_body->size());
+		curl.setopt(CURLOPT_POSTFIELDS, (NULL == request_body) ? "" : *request_body);
+	}
+	response_body.clear();
 	curl.setopt(CURLOPT_WRITEDATA, &response_body);
 	curl.setopt(CURLOPT_WRITEFUNCTION, accumulate_response);
 	curl.setopt(CURLOPT_VERBOSE, 1L);
 	curl.perform();
 	if (200 == curl.get_status()) {
-		std::cerr << "Get All Light Panel Controller Info successful" << std::endl;
+#ifndef NDEBUG
+		std::cerr << "Request successful" << std::endl;
 		std::cerr << "JSON response: " << response_body.str() << std::endl;
-		all_info = json::parse(response_body.str());
-		std::cerr << "Panel count: " << all_info.panel_layout.layout.positions.size() << std::endl;
+#endif /* ndef NDEBUG */
 	} else {
+#ifndef NDEBUG
+		std::cerr << "Request failed: status " << curl.get_status() << std::endl;
+#endif /* ndef NDEBUG */
 		std::ostringstream msg;
-		msg << "Unrecognised HTTP status: " << curl.get_status() << std::endl;
+		msg << "Unexpected HTTP status: " << curl.get_status() << std::endl;
 		throw msg.str();
 	}
 }
