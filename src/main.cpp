@@ -5,6 +5,10 @@
 #include "discovery.h"
 
 #if 0
+#define AURORA_HOSTNAME "Nanoleaf-Light-Panels-53-3b-5d.local"
+#endif
+
+#if 0
 /* Only use this Device ID */
 #define AURORA_ID "74:A9:47:AD:62:C1"
 #endif
@@ -17,12 +21,17 @@ struct callback_args {
 #define CATCH_EXCEPTIONS
 #endif
 
-void try_to_manipulate_aurora(const std::string &host, uint16_t port) {
+void try_to_manipulate_aurora(const std::string &host, int port = -1) {
 #ifdef CATCH_EXCEPTIONS
 	try {
 #endif /* CATCH_EXCEPTIONS */
-		mynanoleaf::Aurora aurora(host, port);
-		aurora.get_info();
+		if (-1 == port) {
+			mynanoleaf::Aurora aurora(host);
+			aurora.get_info();
+		} else {
+			mynanoleaf::Aurora aurora(host, port);
+			aurora.get_info();
+		}
 #ifdef CATCH_EXCEPTIONS
 	} catch (char const * const str) {
 		std::cerr << "Aurora exception: " << str << std::endl;
@@ -31,6 +40,7 @@ void try_to_manipulate_aurora(const std::string &host, uint16_t port) {
 	}
 #endif /* CATCH_EXCEPTIONS */
 }
+
 bool aurora_callback(const AvahiAddress &address, const std::string &host, uint16_t port, const std::string &id, void *userdata) {
 	struct callback_args *args = static_cast<struct callback_args *>(userdata);
 	bool ret;
@@ -59,6 +69,9 @@ main(int argc, char *argv[])
 	if (res != CURLE_OK) {
 		throw curl_easy_strerror(res);
 	}
+#if defined(AURORA_HOSTNAME)
+	try_to_manipulate_aurora(AURORA_HOSTNAME);
+#else /* ndef AURORA_HOSTNAME */
 	struct callback_args args;
 #ifdef AURORA_ID
 	std::string wanted_id(AURORA_ID);
@@ -68,6 +81,9 @@ main(int argc, char *argv[])
 #endif /* AURORA_ID */
 	MDNSResponder mdns;
 	mdns.discover(mynanoleaf::Aurora::NANOLEAF_MDNS_SERVICE_TYPE, aurora_callback, &args);
+#endif /* ndef AURORA_HOSTNAME */
+
 	curl_global_cleanup();
+
 	return EXIT_SUCCESS;
 }
