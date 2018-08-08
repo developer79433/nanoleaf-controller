@@ -4,7 +4,7 @@
 #include "aurora.h"
 #include "discovery.h"
 
-#if 0
+#if 1
 #define AURORA_HOSTNAME "Nanoleaf-Light-Panels-53-3b-5d.local"
 #endif
 
@@ -21,17 +21,27 @@ struct callback_args {
 #define CATCH_EXCEPTIONS
 #endif
 
+static void do_external_control(const std::string &ipaddr, uint16_t port, const std::string &proto) {
+	// TODO
+	std::cerr << "External control: " << ipaddr << ":" << port << " proto " << proto << std::endl;
+}
+
 void try_to_manipulate_aurora(const std::string &host, int port = -1) {
 #ifdef CATCH_EXCEPTIONS
 	try {
 #endif /* CATCH_EXCEPTIONS */
+		mynanoleaf::Aurora *aurora;
 		if (-1 == port) {
-			mynanoleaf::Aurora aurora(host);
-			aurora.get_info();
+			aurora = new mynanoleaf::Aurora(host);
 		} else {
-			mynanoleaf::Aurora aurora(host, port);
-			aurora.get_info();
+			aurora = new mynanoleaf::Aurora(host, port);
 		}
+		aurora->get_info();
+		std::string ipaddr, proto;
+		uint16_t port;
+		aurora->external_control(ipaddr, port, proto);
+		do_external_control(ipaddr, port, proto);
+		delete aurora;
 #ifdef CATCH_EXCEPTIONS
 	} catch (char const * const str) {
 		std::cerr << "Aurora exception: " << str << std::endl;

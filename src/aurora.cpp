@@ -1,6 +1,7 @@
 #include <fstream>
 #include <chrono>
 #include <thread>
+#include <algorithm>
 
 #include "aurora.h"
 
@@ -23,10 +24,23 @@ void Aurora::write_token_file() {
 	fs.close();
 }
 
-size_t Aurora::accumulate_response(char *ptr, size_t size, size_t nmemb, void *userdata) {
+size_t Aurora::accumulate_response(const char *ptr, size_t size, size_t nmemb, void *userdata) {
 	std::ostringstream *response_body = static_cast<std::ostringstream *>(userdata);
 	response_body->write(ptr, size * nmemb);
 	return size * nmemb;
+}
+
+struct string_and_offset {
+	std::string str;
+	size_t off;
+};
+
+size_t Aurora::stream_request(char *ptr, size_t size, size_t nmemb, void *userdata) {
+	string_and_offset *request_body = static_cast<string_and_offset *>(userdata);
+	size_t n = std::min(size * nmemb, request_body->str.size() - request_body->off);
+	memcpy(ptr, request_body->str.c_str() + request_body->off, n);
+	request_body->off += n;
+	return n;
 }
 
 void Aurora::generate_token() {
@@ -73,31 +87,92 @@ void Aurora::do_request(
 	}
 	full_path << API_PREFIX << token << path;
 	curl.set_path(full_path.str());
+	string_and_offset so;
+	// Zap custom headers
+	curl.setopt(CURLOPT_HTTPHEADER, NULL);
+	struct curl_slist *headers = NULL;
+	std::ostringstream content_length;
 	if (method == "GET") {
 		curl.setopt(CURLOPT_HTTPGET, 1L);
 		// Request body ignored
 	} else if (method == "POST") {
 		curl.setopt(CURLOPT_POSTFIELDSIZE, (NULL == request_body) ? 0L : request_body->size());
 		curl.setopt(CURLOPT_POSTFIELDS, (NULL == request_body) ? "" : *request_body);
+	} else if (method == "PUT") {
+		curl.setopt(CURLOPT_UPLOAD, 1L);
+		so.off = 0;
+		so.str = (NULL == request_body) ? "" : *request_body;
+		curl.setopt(CURLOPT_READDATA, &so);
+		curl.setopt(CURLOPT_READFUNCTION, stream_request);
+		// Prevent use of HTTP chunked transfer encoding
+		content_length << "Content-Length: " << ((NULL == request_body) ? 0 : request_body->size());
+		headers = curl_slist_append(headers, content_length.str().c_str());
+		headers = curl_slist_append(headers, "Transfer-Encoding: identity");
+		headers = curl_slist_append(headers, "Expect:");
+	} else {
+		std::ostringstream msg;
+		msg << "Unrecognised HTTP method '" << method << "'";
+		throw msg.str();
 	}
 	response_body.clear();
+	if (headers) {
+		curl.setopt(CURLOPT_HTTPHEADER, headers);
+	}
 	curl.setopt(CURLOPT_WRITEDATA, &response_body);
 	curl.setopt(CURLOPT_WRITEFUNCTION, accumulate_response);
 	curl.setopt(CURLOPT_VERBOSE, 1L);
+#ifndef NDEBUG
+	std::cerr << "Request: " << method << " " << full_path.str() << std::endl;
+	if (request_body && request_body->size()) {
+		std::cerr << "Request body:" << std::endl << *request_body << std::endl;
+	}
+#endif /* ndef NDEBUG */
 	curl.perform();
 	if (200 == curl.get_status()) {
 #ifndef NDEBUG
-		std::cerr << "Request successful" << std::endl;
-		std::cerr << "JSON response: " << response_body.str() << std::endl;
+		std::cerr << "Successful response: " << response_body.str() << std::endl;
 #endif /* ndef NDEBUG */
 	} else {
 #ifndef NDEBUG
-		std::cerr << "Request failed: status " << curl.get_status() << std::endl;
+		std::cerr << "Failed response: status " << curl.get_status() << std::endl;
+		if (response_body.str().size()) {
+			std::cerr << "Response body:" << std::endl << response_body.str() << std::endl;
+		}
 #endif /* ndef NDEBUG */
 		std::ostringstream msg;
 		msg << "Unexpected HTTP status: " << curl.get_status() << std::endl;
 		throw msg.str();
 	}
+}
+
+void Aurora::external_control(
+	std::string &ipaddr,
+	uint16_t &port,
+	std::string &proto
+) {
+	json request = json{
+		{"write",
+			{
+				{"command", "display"},
+				// {"version", "1.0"},
+				{"animType", "extControl"}
+				// {"loop", "no"}
+			}
+		}
+	};
+	std::string request_body = request.dump();
+	std::ostringstream response_body;
+	do_request(
+		"PUT",
+		get_auth_token(),
+		"/effects",
+		&request_body,
+		response_body
+	);
+	json resp = json::parse(response_body.str());
+	ipaddr = resp["streamControlIpAddr"];
+	port = resp["streamControlPort"];
+	proto = resp["streamControlProtocol"];
 }
 
 void to_json(json &j, const ClampedValue &cv) {

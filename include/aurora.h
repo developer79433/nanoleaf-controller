@@ -97,7 +97,8 @@ private:
 public:
 	Aurora(const std::string &hostname, unsigned short port = 16021) : curl(mycurlpp::Curl(hostname, port)) {}
 	virtual ~Aurora() {}
-	static size_t accumulate_response(char *ptr, size_t size, size_t nmemb, void *userdata);
+	static size_t accumulate_response(const char *ptr, size_t size, size_t nmemb, void *userdata);
+	static size_t stream_request(char *ptr, size_t size, size_t nmemb, void *userdata);
 	void generate_token();
 	std::string get_auth_token();
 	unsigned int get_panel_count() const {
@@ -109,6 +110,11 @@ public:
 		all_info = json::parse(response_body.str());
 		std::cerr << "Panel count: " << get_panel_count() << std::endl;
 	}
+	void external_control(
+		std::string &ipaddr,
+		uint16_t &port,
+		std::string &proto
+	);
 };
 
 void to_json(json &j, const ClampedValue &cv);
