@@ -11,6 +11,7 @@
 #include <cstring>
 
 #include "streaming.h"
+#include "util.h"
 
 namespace mynanoleaf {
 
@@ -114,10 +115,6 @@ void write_panel_commands(IPStream &stream, const std::vector<PanelCommand> &com
 		c.write(stream);
 	}
 	stream.flush();
-}
-
-int randomBetween(int lo, int hi) {
-	return lo + rand() / (RAND_MAX / (hi - lo) + 1);
 }
 
 void external_control_socket(Aurora &aurora, IPStream &stream) {
