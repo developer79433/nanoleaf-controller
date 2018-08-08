@@ -4,11 +4,45 @@
 #include <algorithm>
 
 #include "aurora.h"
+#include "discovery.h"
 
 namespace mynanoleaf {
 
 const char *Aurora::NANOLEAF_MDNS_SERVICE_TYPE = "_nanoleafapi._tcp";
 const char *Aurora::API_PREFIX = "/api/v1/";
+std::vector<Aurora *> Aurora::instances;
+
+struct callback_args {
+	const std::string *wanted_id;
+};
+
+static bool aurora_callback(const AvahiAddress &address, const std::string &host, uint16_t port, const std::string &id, void *userdata) {
+	struct callback_args *args = static_cast<struct callback_args *>(userdata);
+	bool ret;
+	if (args->wanted_id == NULL || 0 == args->wanted_id->length()) {
+		// Attempt to connect to all discovered devices
+		std::cerr << "Discovered device ID '" << id << "'" << std::endl;
+		new Aurora(host, port);
+		ret = true; // Continue enumeration
+	} else if (id == *(args->wanted_id)) {
+		// Found the sole device ID we're after
+		std::cerr << "Discovered configured device ID '" << id << "'" << std::endl;
+		new Aurora(host, port);
+		ret = false; // Stop enumeration
+	} else {
+		// Not the sole device ID we're after
+		std::cerr << "Disregarding device ID '" << id << "'" << std::endl;
+		ret = true; // Continue enumeration
+	}
+	return ret;
+}
+
+void Aurora::discover(const std::string *wanted_id) {
+	MDNSResponder mdns;
+	struct callback_args args;
+	args.wanted_id = wanted_id;
+	mdns.discover(NANOLEAF_MDNS_SERVICE_TYPE, aurora_callback, &args);
+}
 
 void Aurora::read_token_file() {
 	std::ifstream fs;

@@ -78,7 +78,8 @@ public:
 };
 
 class Aurora {
-public:
+private:
+	static std::vector<Aurora *> instances;
 	static const char *NANOLEAF_MDNS_SERVICE_TYPE;
 	static const char *API_PREFIX;
 private:
@@ -95,8 +96,20 @@ private:
 		std::ostringstream &response_body
 	);
 public:
-	Aurora(const std::string &hostname, unsigned short port = 16021) : curl(mycurlpp::Curl(hostname, port)) {}
-	virtual ~Aurora() {}
+	static std::vector<Aurora *> get_instances() { return instances; }
+public:
+	Aurora(const std::string &hostname, unsigned short port = 16021) : curl(mycurlpp::Curl(hostname, port)) {
+		instances.push_back(this);
+	}
+	virtual ~Aurora() {
+		for (auto it = instances.begin(); it != instances.end(); ++it) {
+			if (*it == this) {
+				instances.erase(it);
+				break;
+			}
+		}
+	}
+	static void discover(const std::string *wanted_id);
 	static size_t accumulate_response(const char *ptr, size_t size, size_t nmemb, void *userdata);
 	static size_t stream_request(char *ptr, size_t size, size_t nmemb, void *userdata);
 	void generate_token();

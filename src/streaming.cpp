@@ -70,7 +70,9 @@ static std::string hexdump(const void *p, size_t n) {
 }
 
 void IPStream::write(const void *p, size_t n) {
-	std::cerr << "Writing: " << hexdump(p, n) << std::endl;
+	if (n) {
+		std::cerr << "Writing: " << hexdump(p, n) << std::endl;
+	}
 	while (n > 0) {
 		int ret = ::write(fd, p, n);
 		if (ret < 0) {
@@ -122,7 +124,7 @@ void external_control_socket(Aurora &aurora, IPStream &stream) {
 	std::vector<PanelCommand> commands;
 	for (auto &p: aurora.get_panel_positions()) {
 		std::vector<Frame> frames;
-		Frame *f = new Frame(255, 0, 255, 1);
+		Frame *f = new Frame(30, 10, 60, 1);
 		frames.push_back(*f);
 		auto *pc = new PanelCommand(p.id, frames);
 		commands.push_back(*pc);
