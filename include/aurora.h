@@ -104,6 +104,9 @@ public:
 	unsigned int get_panel_count() const {
 		return all_info.panel_layout.layout.positions.size();
 	}
+	const std::vector<PanelPosition> &get_panel_positions() const {
+		return all_info.panel_layout.layout.positions;
+	}
 	void get_info() {
 		std::ostringstream response_body;
 		do_request("GET", get_auth_token(), "/", NULL, response_body);
