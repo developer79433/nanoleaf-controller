@@ -117,21 +117,4 @@ void write_panel_commands(IPStream &stream, const std::vector<PanelCommand> &com
 	stream.flush();
 }
 
-void external_control_socket(Aurora &aurora, IPStream &stream) {
-	std::vector<PanelCommand> commands;
-	for (auto &p: aurora.get_panel_positions()) {
-		std::vector<Frame> frames;
-		Frame *f = new Frame(30, 10, 60, 1);
-		frames.push_back(*f);
-		auto *pc = new PanelCommand(p.id, frames);
-		commands.push_back(*pc);
-	}
-	write_panel_commands(stream, commands);
-}
-
-void do_external_control(Aurora &aurora, const std::string &ipaddr, uint16_t port, const std::string &proto) {
-	std::unique_ptr<IPStream> stream(IPStream::create(proto, ipaddr, port));
-	external_control_socket(aurora, *stream);
-}
-
 }

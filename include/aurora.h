@@ -4,12 +4,15 @@
 #include <nlohmann/json.hpp>
 
 #include "mycurlpp.h"
+#include "streaming.h"
 
 #define TOKEN_FILENAME "auth_token.dat"
 
 namespace mynanoleaf {
 
 using json = nlohmann::json;
+
+class IPStream;
 
 class ClampedValue {
 public:
@@ -126,11 +129,7 @@ public:
 		all_info = json::parse(response_body.str());
 		std::cerr << "Panel count: " << get_panel_count() << std::endl;
 	}
-	void external_control(
-		std::string &ipaddr,
-		uint16_t &port,
-		std::string &proto
-	);
+	IPStream &external_control();
 };
 
 void to_json(json &j, const ClampedValue &cv);

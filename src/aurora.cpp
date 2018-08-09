@@ -179,11 +179,10 @@ void Aurora::do_request(
 	}
 }
 
-void Aurora::external_control(
-	std::string &ipaddr,
-	uint16_t &port,
-	std::string &proto
-) {
+IPStream &Aurora::external_control() {
+	std::string ipaddr;
+	uint16_t port;
+	std::string proto;
 	json request = json{
 		{"write",
 			{
@@ -207,6 +206,8 @@ void Aurora::external_control(
 	ipaddr = resp["streamControlIpAddr"];
 	port = resp["streamControlPort"];
 	proto = resp["streamControlProtocol"];
+	IPStream *s = IPStream::create(proto, ipaddr, port);
+	return *s;
 }
 
 void to_json(json &j, const ClampedValue &cv) {

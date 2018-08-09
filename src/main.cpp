@@ -1,8 +1,6 @@
 #include <cstdlib>
 
-#include "mycurlpp.h"
 #include "aurora.h"
-#include "streaming.h"
 
 #if 1
 #define AURORA_HOSTNAME "Nanoleaf-Light-Panels-53-3b-5d.local"
@@ -13,6 +11,18 @@
 #define AURORA_ID "74:A9:47:AD:62:C1"
 #endif
 
+void do_external_control(mynanoleaf::Aurora &aurora, mynanoleaf::IPStream &stream) {
+	std::vector<mynanoleaf::PanelCommand> commands;
+	for (auto &p: aurora.get_panel_positions()) {
+		std::vector<mynanoleaf::Frame> frames;
+		mynanoleaf::Frame *f = new mynanoleaf::Frame(0xa0, 0x52, 0x2d, 1);
+		frames.push_back(*f);
+		auto *pc = new mynanoleaf::PanelCommand(p.id, frames);
+		commands.push_back(*pc);
+	}
+	write_panel_commands(stream, commands);
+}
+
 #if 1
 #define CATCH_EXCEPTIONS
 #endif
@@ -22,10 +32,8 @@ void try_to_manipulate_aurora(mynanoleaf::Aurora &aurora) {
 	try {
 #endif /* CATCH_EXCEPTIONS */
 		aurora.get_info();
-		std::string ipaddr, proto;
-		uint16_t port;
-		aurora.external_control(ipaddr, port, proto);
-		do_external_control(aurora, ipaddr, port, proto);
+		mynanoleaf::IPStream &sock = aurora.external_control();
+		do_external_control(aurora, sock);
 #ifdef CATCH_EXCEPTIONS
 	} catch (char const * const str) {
 		std::cerr << "Aurora exception: " << str << std::endl;

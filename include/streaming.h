@@ -101,7 +101,7 @@ public:
 	}
 };
 
-void do_external_control(Aurora &aurora, const std::string &ipaddr, uint16_t port, const std::string &proto);
+void write_panel_commands(IPStream &stream, const std::vector<PanelCommand> &commands);
 
 }
 
